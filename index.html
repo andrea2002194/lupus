@@ -11,7 +11,6 @@
 <meta name="theme-color" content="#0ea5a4">
 </head>
 <body>
-<div id="topOverlay"></div>
 <div class="app" role="application" aria-label="Lupus Mobile">
 <h1 class="mainTitle">
   LUPUS MOBILE
@@ -147,6 +146,25 @@ let votiGiorno = {};       // map voter -> target
 let vincitorePrimo = null; // nome vincitore primo sondaggio quando unico
 let ultimoRogo = null;
 let currentVoter = null;
+
+//=====================
+//	copertura dynamic island
+//=====================
+const notchOverlay = document.createElement('div');
+notchOverlay.id = 'notchOverlay';
+notchOverlay.style = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-top); /* altezza della Dynamic Island / notch */
+    background-color: #0ea5a4; /* colore dello sfondo della tua app */
+    z-index: 10000; /* sopra tutti gli altri elementi */
+    pointer-events: none; /* così non blocca i click */
+`;
+
+// Aggiungiamolo al body
+document.body.appendChild(notchOverlay);
 
 //=====================
 //	AGGIUNTA PER 8 GIOCATORI

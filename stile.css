@@ -235,13 +235,3 @@ input {
   transform: scale(0.9);
 }
 
-#topOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: env(safe-area-inset-top); /* altezza della notch / Dynamic Island */
-  background: #020617; /* colore dello sfondo della tua app */
-  z-index: 9999;
-  pointer-events: none; /* non blocca click su contenuti sottostanti */
-}
