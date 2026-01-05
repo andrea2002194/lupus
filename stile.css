@@ -5,27 +5,12 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+body {
   margin: 0;
-  padding: 0;
-}
+  min-height: 100svh;
 
-html, body {
-  width: 100%;
-  height: 100svh; /* copre viewport dinamica su iOS */
-  overflow-x: hidden; /* blocca scroll laterale */
-  font-family: 'Arial', sans-serif;
-  color: #e6eef6;
-  background: linear-gradient(180deg, #020617 0%, #081028 100%);
-}
-
-/* =========================
-   UI PRINCIPALE come OVERLAY
-   ========================= */
-.ui-main {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  z-index: 1000; /* sopra la UI normale ma sotto altri overlay */
-  
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -33,15 +18,22 @@ html, body {
 
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
-  overflow-x: hidden;
+
+  background: linear-gradient(180deg, #020617 0%, #081028 100%);
+  font-family: 'Arial', sans-serif;
+  color: #e6eef6;
+
+  overflow-x: hidden; /* blocca scroll laterale */
 }
 
-/* App principale interna */
+/* =========================
+   App principale
+   ========================= */
 .app {
   width: 100%;
   max-width: 480px;
 
-  margin: 16px auto; /* centrato orizzontalmente */
+  margin: 16px auto; /* centra orizzontalmente senza creare overflow */
   padding: 16px;
 
   background: rgba(2, 6, 23, 0.9);
@@ -158,21 +150,14 @@ button.actionBtn {
   text-align: center;
 }
 
-/* =========================
-   Fine gioco / overlay centrato
-   ========================= */
 .end-game {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  z-index: 9999;
+  width: 100%;
+  height: 100vh;
+  padding: 30px;
 
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-
-  padding: env(safe-area-inset-top) 30px env(safe-area-inset-bottom) 30px;
-
   background: #111;
   color: #fff;
 }
@@ -223,10 +208,6 @@ button.actionBtn {
   cursor: pointer;
 }
 
-#restartBtn:hover {
-  background: darkred;
-}
-
 input {
   width: 100%;
   max-width: 400px;
@@ -237,6 +218,10 @@ input {
   text-transform: uppercase;
 
   border-radius: 10px;
+}
+
+#restartBtn:hover {
+  background: darkred;
 }
 
 .hidden {
@@ -262,30 +247,4 @@ input {
 
 .restart-mini:active {
   transform: scale(0.9);
-}
-
-/* =========================
-   Overlay generico full screen centrato
-   ========================= */
-.overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  z-index: 10000; /* sopra tutto */
-
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-
-  padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;
-  background: linear-gradient(180deg, #020617 0%, #081028 100%);
-  text-align: center;
-}
-
-.overlay input,
-.overlay button {
-  width: 100%;
-  max-width: 300px;
-  margin: 10px auto;
-  display: block;
 }
