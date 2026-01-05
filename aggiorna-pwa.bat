@@ -8,14 +8,13 @@ set PWA_DIR=C:\Users\vavas\OneDrive\Desktop\pwa
 cd /d "%PWA_DIR%"
 
 REM -------------------------------
-REM Incrementa la versione della cache in sw.js usando PowerShell
+REM Incrementa la versione della cache in sw.js
 REM -------------------------------
 powershell -Command ^
 $swFile = '%PWA_DIR%\sw.js'; ^
 $content = Get-Content $swFile; ^
-$content = $content -replace 'CACHE_NAME\s*=\s*''lupus-cache-v(\d+)''', { 
-    $num = [int]$args[0]; 'CACHE_NAME = ''lupus-cache-v' + ($num+1) + '''' 
-}; ^
+$pattern = "CACHE_NAME\s*=\s*'lupus-cache-v(\d+)'"; ^
+$content = $content -replace $pattern, { param($matches) "CACHE_NAME = 'lupus-cache-v$([int]$matches[1]+1)'" }; ^
 Set-Content $swFile $content
 
 REM Legge la nuova versione della cache
