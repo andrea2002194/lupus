@@ -726,7 +726,7 @@ function showActionOptions(player) {
         btn.onclick = () => {
             player.acted = true;
             btn.blur();
-            setTimeout(() => renderNightFirst(), 50);
+            setTimeout(() => renderNightFirst(), 200);
         };
         actionArea.appendChild(btn);
         return;
@@ -777,7 +777,7 @@ function showActionOptions(player) {
             b.blur();
             setTimeout(() => {
             renderNightFirst();
-            }, 50);
+            }, 200);
         };
 
         actionArea.appendChild(b);
