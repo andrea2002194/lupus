@@ -673,6 +673,12 @@ if (player.role === "LUPO ALFA") {
         const btn = document.createElement('button');
         btn.className = 'primary';
         btn.textContent = 'Continua';
+        btn.style.pointerEvents = 'none';
+        btn.style.pointerEvents = 'none';
+        setTimeout(() => {
+            btn.style.pointerEvents = 'auto';
+            btn.blur(); // rimuove il focus blu
+        }, 100);
         btn.onclick = () => { 
             player.acted = true; 
             renderNightFirst(); 
@@ -723,10 +729,14 @@ function showActionOptions(player) {
         const btn = document.createElement('button');
         btn.className = 'primary';
         btn.textContent = 'Continua';
+        btn.style.pointerEvents = 'none';
+        setTimeout(() => {
+            btn.style.pointerEvents = 'auto';
+            btn.blur(); // rimuove il focus blu
+        }, 100);
         btn.onclick = () => {
             player.acted = true;
-            btn.blur();
-            setTimeout(() => renderNightFirst(), 200);
+            renderNightFirst();
         };
         actionArea.appendChild(btn);
         return;
@@ -736,7 +746,8 @@ function showActionOptions(player) {
         const b = document.createElement('button');
         b.className = 'actionBtn';
         b.textContent = t.name;
-
+        b.style.pointerEvents = 'none';
+        setTimeout(() => b.style.pointerEvents = 'auto', 100);
         b.onclick = () => {
             switch(player.role) {
                 case 'JOKER':
@@ -774,10 +785,7 @@ function showActionOptions(player) {
 
             // Segna che il giocatore ha agito e aggiorna UI
             player.acted = true;
-            b.blur();
-            setTimeout(() => {
             renderNightFirst();
-            }, 200);
         };
 
         actionArea.appendChild(b);

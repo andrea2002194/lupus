@@ -276,3 +276,8 @@ input {
   width: 100%;
 }
 
+.actionBtn:focus,
+.primary:focus {
+    outline: none;
+    box-shadow: none;
+}
