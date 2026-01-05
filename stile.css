@@ -11,7 +11,7 @@
 
 html, body {
   width: 100%;
-  height: 100svh; /* copre viewport dinamica su iOS */
+  height: 100svh; /* viewport dinamica iOS */
   overflow-x: hidden; /* blocca scroll laterale */
   font-family: 'Arial', sans-serif;
   color: #e6eef6;
@@ -23,8 +23,9 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-
-  padding-top: env(safe-area-inset-top);
+  
+  /* Rimuove padding-top della safe area per coprire Dynamic Island */
+  padding-top: 0;
   padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -34,8 +35,7 @@ body {
 .app {
   width: 100%;
   max-width: 480px;
-
-  margin: 16px auto; /* centrato orizzontalmente */
+  margin: 16px auto; /* centra orizzontalmente */
   padding: 16px;
 
   background: rgba(2, 6, 23, 0.9);
@@ -268,9 +268,9 @@ input {
 
   display: flex;
   flex-direction: column;
-  justify-content: center; /* verticale */
-  align-items: center;     /* orizzontale */
-  padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; /* safe area */
+  justify-content: center;
+  align-items: center;
+  padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;
 
   text-align: center;
 }

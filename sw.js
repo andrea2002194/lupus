@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lupus-cache-v15';
+const CACHE_NAME = 'lupus-cache-v16';
 
 // Lista di tutti i file da precacheare
 const FILES_TO_CACHE = [
