@@ -1,19 +1,29 @@
 /* =========================
    Stili globali
    ========================= */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   min-height: 100svh;
+
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start; /* default, i contenuti principali iniziano dall'alto */
+  justify-content: flex-start;
+
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
 
   background: linear-gradient(180deg, #020617 0%, #081028 100%);
   font-family: 'Arial', sans-serif;
   color: #e6eef6;
+
+  overflow-x: hidden; /* blocca scroll laterale */
 }
 
 /* =========================
@@ -22,7 +32,8 @@ body {
 .app {
   width: 100%;
   max-width: 480px;
-  margin: 16px;
+
+  margin: 16px auto; /* centra orizzontalmente senza creare overflow */
   padding: 16px;
 
   background: rgba(2, 6, 23, 0.9);
@@ -49,7 +60,6 @@ h1 {
   border-radius: 12px;
   padding: 16px;
   width: 100%;
-  box-sizing: border-box;
   margin-bottom: 12px;
   text-align: center;
 }
@@ -109,7 +119,9 @@ button.actionBtn {
 }
 
 /* Pulsanti votazione e azione centrati */
-.row, .actionArea, .voteArea {
+.row,
+.actionArea,
+.voteArea {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -146,8 +158,6 @@ button.actionBtn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-
   background: #111;
   color: #fff;
 }
@@ -191,17 +201,15 @@ button.actionBtn {
   padding: 18px;
   font-size: 22px;
   font-weight: bold;
-
   border-radius: 12px;
   border: none;
-
   background: crimson;
   color: white;
   cursor: pointer;
 }
 
 input {
-  width: calc(100% - 20px);
+  width: 100%;
   max-width: 400px;
   padding: 12px 10px;
 
@@ -210,7 +218,6 @@ input {
   text-transform: uppercase;
 
   border-radius: 10px;
-  box-sizing: border-box;
 }
 
 #restartBtn:hover {
@@ -224,14 +231,11 @@ input {
 .restart-mini {
   border: none;
   background: none;
-
   font-size: 20px;
   padding: 0;
   margin-left: 6px;
-
   width: auto;
   height: auto;
-
   cursor: pointer;
   opacity: 1;
   transition: 0.2s;
@@ -243,29 +247,4 @@ input {
 
 .restart-mini:active {
   transform: scale(0.9);
-}
-
-/* =========================
-   Overlay centrato
-   ========================= */
-.overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.85);
-
-  display: flex;
-  flex-direction: column;
-  justify-content: center; /* verticale */
-  align-items: center;     /* orizzontale */
-  z-index: 9999;
-  text-align: center;
-  padding: 20px;
-}
-
-.overlay input,
-.overlay button {
-  width: 100%;
-  max-width: 300px;
-  margin: 10px auto; /* centra */
-  display: block;
 }
