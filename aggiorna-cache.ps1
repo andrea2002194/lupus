@@ -1,15 +1,14 @@
-# File: aggiorna-cache.ps1
+# aggiorna-cache.ps1
 $swFile = "sw.js"
 
 # Leggi tutto il contenuto
 $content = Get-Content $swFile
 
 # Incrementa la cache
-# La regex cattura il numero nella variabile 'num'
 $content = $content -replace "CACHE_NAME\s*=\s'lupus-cache-v(\d+)'", { param($m) "CACHE_NAME = 'lupus-cache-v$([int]$m.Groups[1].Value+1)'" }
 
-# Scrivi il nuovo contenuto
-Set-Content $swFile $content
+# Scrivi il nuovo contenuto con WriteAllLines (più robusto)
+[System.IO.File]::WriteAllLines($swFile, $content)
 
 # Estrai il nuovo numero della cache
 $line = Select-String "CACHE_NAME" $swFile
