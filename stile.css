@@ -1,5 +1,5 @@
 /* =========================
-   Reset e box-sizing
+   Stili globali
    ========================= */
 *,
 *::before,
@@ -19,33 +19,34 @@ html, body {
 }
 
 /* =========================
-   Corpo principale
+   UI PRINCIPALE come OVERLAY
    ========================= */
-body {
+.ui-main {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 1000; /* sopra la UI normale ma sotto altri overlay */
+  
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
 
-  padding-top: 0; /* rimuove spazio Dynamic Island */
+  padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
+  overflow-x: hidden;
 }
 
-/* =========================
-   App principale
-   ========================= */
+/* App principale interna */
 .app {
   width: 100%;
   max-width: 480px;
+
   margin: 16px auto; /* centrato orizzontalmente */
   padding: 16px;
 
   background: rgba(2, 6, 23, 0.9);
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-
-  position: relative;
-  top: 0; /* forza sopra la Dynamic Island */
 }
 
 h1 {
@@ -71,9 +72,6 @@ h1 {
   text-align: center;
 }
 
-/* =========================
-   Pulsanti
-   ========================= */
 button {
   width: 100%;
   max-width: 400px;
@@ -128,6 +126,7 @@ button.actionBtn {
   text-align: center;
 }
 
+/* Pulsanti votazione e azione centrati */
 .row,
 .actionArea,
 .voteArea {
@@ -138,7 +137,7 @@ button.actionBtn {
 }
 
 /* =========================
-   Log
+   Log SOTTO
    ========================= */
 #logContainer {
   display: none;
@@ -163,14 +162,16 @@ button.actionBtn {
    Fine gioco / overlay centrato
    ========================= */
 .end-game {
-  width: 100%;
-  height: 100svh;
-  padding: env(safe-area-inset-top) 30px env(safe-area-inset-bottom) 30px;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 9999;
 
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+
+  padding: env(safe-area-inset-top) 30px env(safe-area-inset-bottom) 30px;
 
   background: #111;
   color: #fff;
@@ -264,21 +265,20 @@ input {
 }
 
 /* =========================
-   Overlay full screen centrato
+   Overlay generico full screen centrato
    ========================= */
 .overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-
-  background: linear-gradient(180deg, #020617 0%, #081028 100%);
-  z-index: 9999;
+  z-index: 10000; /* sopra tutto */
 
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;
 
+  padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;
+  background: linear-gradient(180deg, #020617 0%, #081028 100%);
   text-align: center;
 }
 
