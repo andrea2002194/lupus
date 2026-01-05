@@ -1,11 +1,17 @@
 # aggiorna-cache.ps1
 $swFile = "sw.js"
 
-# Leggi tutto il contenuto
+# Leggi tutto il contenuto in un array di righe
 $content = Get-Content $swFile
 
-# Trova l'indice della riga con CACHE_NAME
-$lineIndex = $content.FindIndex({ $_ -match "CACHE_NAME\s*=\s*'lupus-cache-v(\d+)'" })
+# Trova la riga con CACHE_NAME
+$lineIndex = -1
+for ($i = 0; $i -lt $content.Count; $i++) {
+    if ($content[$i] -match "CACHE_NAME\s*=\s*'lupus-cache-v(\d+)'") {
+        $lineIndex = $i
+        break
+    }
+}
 
 if ($lineIndex -ge 0) {
     # Estrai il numero attuale della cache
