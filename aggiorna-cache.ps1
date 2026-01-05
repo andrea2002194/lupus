@@ -7,8 +7,8 @@ $content = Get-Content $swFile
 # Incrementa la cache
 $content = $content -replace "CACHE_NAME\s*=\s'lupus-cache-v(\d+)'", { param($m) "CACHE_NAME = 'lupus-cache-v$([int]$m.Groups[1].Value+1)'" }
 
-# Scrivi il nuovo contenuto con WriteAllLines (più robusto)
-[System.IO.File]::WriteAllLines($swFile, $content)
+# Scrivi il nuovo contenuto (Set-Content va bene qui)
+Set-Content $swFile $content
 
 # Estrai il nuovo numero della cache
 $line = Select-String "CACHE_NAME" $swFile
