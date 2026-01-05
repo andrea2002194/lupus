@@ -3,12 +3,15 @@
    ========================= */
 body {
   margin: 0;
-  min-height: 100vh;
+
+  min-height: 100svh;
   display: flex;
-  flex-direction: column; /* ⬅️ invece di row */
+  flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 16px;
+
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+
   background: linear-gradient(180deg, #020617 0%, #081028 100%);
   font-family: 'Arial', sans-serif;
   color: #e6eef6;
@@ -19,9 +22,12 @@ body {
    ========================= */
 .app {
   width: 100%;
-  max-width: 480px; /* larghezza mobile */
-  background: rgba(2, 6, 23, 0.9);
+  max-width: 480px;
+
+  margin: 16px;
   padding: 16px;
+
+  background: rgba(2, 6, 23, 0.9);
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
@@ -88,9 +94,14 @@ button.actionBtn {
 
 .mainTitle {
   font-size: 26px;        /* più grande dell’attuale 20px */
-  letter-spacing: 2px;   /* effetto titolo */
+  letter-spacing: 2px;    /* effetto titolo */
   text-transform: uppercase;
   margin-bottom: 16px;
+
+  display: flex;           /* mette titolo e simbolo sulla stessa riga */
+  align-items: center;     /* centra verticalmente */
+  justify-content: center; /* mantiene il tutto centrato */
+  gap: 6px;                /* spazio tra testo e simbolo */
 }
 
 #timerDiv {
@@ -194,14 +205,18 @@ button.actionBtn {
 }
 
 input {
-  width: calc(100% - 20px); /* margine interno */
-  max-width: 400px;          /* non troppo largo su iPhone */
+  width: calc(100% - 20px);
+  max-width: 400px;
   padding: 12px 10px;
-  border-radius: 10px;
+
+  font-size: 16px;     /* 🔥 BLOCCA ZOOM iOS */
   font-weight: bold;
   text-transform: uppercase;
+
+  border-radius: 10px;
   box-sizing: border-box;
 }
+
 
 #restartBtn:hover {
     background: darkred;
@@ -209,4 +224,28 @@ input {
 
 .hidden {
     display: none;
+}
+
+.restart-mini {
+  border: none;
+  background: none;
+
+  font-size: 20px;   /* grandezza simbolo */
+  padding: 0;        /* rimuove spazio interno */
+  margin-left: 6px;  /* piccolo distacco dal titolo */
+
+  width: auto;       /* larghezza automatica */
+  height: auto;      /* altezza automatica */
+
+  cursor: pointer;
+  opacity: 1;
+  transition: 0.2s;
+}
+
+.restart-mini:hover {
+  opacity: 0.8;
+}
+
+.restart-mini:active {
+  transform: scale(0.9);
 }

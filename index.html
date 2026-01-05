@@ -2,7 +2,9 @@
 <html lang="it">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Lupus Mobile</title>
 <link rel="stylesheet" href="stile.css">
 <link rel="manifest" href="manifest.json">
@@ -10,7 +12,10 @@
 </head>
 <body>
 <div class="app" role="application" aria-label="Lupus Mobile">
-  <h1 class="mainTitle">LUPUS MOBILE</h1>
+<h1 class="mainTitle">
+  LUPUS MOBILE
+  <button id="quickRestartBtn" class="restart-mini" title="Riavvia partita">🔄</button>
+</h1>
 
 <!-- START -->
 <div id="startSection" class="section">
@@ -1352,6 +1357,30 @@ confirmRolesBtn.onclick = () => {
 
     // Nascondi sezione iniziale
     document.getElementById('logContainer').style.display = 'none';
+
+//=====================
+//	PULSANTE RESTART PARTITA MENTRE SI STA GIOCANDO
+//=====================
+
+function restartGame() {
+    if (confirm("⚠️ Vuoi davvero riavviare la partita? Tutti i dati andranno persi!")) {
+        // 🔹 Ricarica la pagina, equivalente a chiudi/riapri
+        window.location.reload();
+    }
+}
+
+// 🔹 COLLEGO IL TASTO QUICK RESTART
+const quickRestartBtn = document.getElementById("quickRestartBtn");
+
+quickRestartBtn.addEventListener("click", restartGame);
+
+// 🔹 TOUCH/LUNGO PRESSIONE SU MOBILE
+let holdTimer;
+quickRestartBtn.addEventListener("touchstart", () => {
+    holdTimer = setTimeout(restartGame, 1500);
+});
+quickRestartBtn.addEventListener("touchend", () => clearTimeout(holdTimer));
+quickRestartBtn.addEventListener("touchcancel", () => clearTimeout(holdTimer));
 
 //=====================
 //	CONTROLLO VINCITA
