@@ -726,7 +726,7 @@ function showActionOptions(player) {
         btn.onclick = () => {
             player.acted = true;
             btn.blur();
-            renderNightFirst();
+            setTimeout(() => renderNightFirst(), 50);
         };
         actionArea.appendChild(btn);
         return;
@@ -775,7 +775,9 @@ function showActionOptions(player) {
             // Segna che il giocatore ha agito e aggiorna UI
             player.acted = true;
             b.blur();
+            setTimeout(() => {
             renderNightFirst();
+            }, 50);
         };
 
         actionArea.appendChild(b);
