@@ -725,6 +725,7 @@ function showActionOptions(player) {
         btn.textContent = 'Continua';
         btn.onclick = () => {
             player.acted = true;
+            btn.blur();
             renderNightFirst();
         };
         actionArea.appendChild(btn);
@@ -773,6 +774,7 @@ function showActionOptions(player) {
 
             // Segna che il giocatore ha agito e aggiorna UI
             player.acted = true;
+            b.blur();
             renderNightFirst();
         };
 
