@@ -235,3 +235,44 @@ input {
   transform: scale(0.9);
 }
 
+.role-card {
+    background: linear-gradient(135deg, #f0f4ff, #d9e4ff);
+    border-radius: 12px;
+    padding: 15px 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.role-card h3 {
+    margin: 0 0 5px;
+    color: #2c3e50;
+}
+
+.role-card p {
+    margin: 0;
+    color: #34495e;
+    font-size: 0.95rem;
+}
+
+.role-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+}
+
+/* =========================
+   Lista ruoli - FIX VISIVO
+   ========================= */
+
+#roleList {
+  list-style: none;   /* ❌ via i puntini */
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;          /* ✅ spazio tra le card */
+}
+
+#roleList li {
+  width: 100%;
+}
+

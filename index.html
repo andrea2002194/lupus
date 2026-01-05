@@ -33,7 +33,7 @@
 <!-- SEZIONE RUOLI CON AZIONI -->
 <div id="roleInfoSection" class="section" style="display:none">
   <div class="card" id="roleInfoCard">
-    <h2>Ruoli presenti in questa partita</h2>
+    <h2>RUOLI PRESENTI IN QUESTA PARTITA</h2>
     <ul id="roleList"></ul>
   </div>
   <div class="row" style="margin-top:10px; gap: 10px;">
@@ -102,16 +102,8 @@
 <script>
 
 //=====================
-//	Stato e configurazione
+//	LET
 //=====================
-
-const ruoloVillico = ["VEGGENTE","MEDIUM","GUFO","VILLICO","MASSONE","JOKER"];
-
-const ruoliMannari = ["LUPO","LUPO ALFA","L'INDEMONIATO","MERETRICE","CRICETO"];
-
-const ruoloBuoni = ["VEGGENTE","MEDIUM","MERETRICE","GUFO","MASSONE","VILLICO"];
-
-const ruoloCattivi = ["LUPO","LUPO ALFA","JOKER"];
 
 let players = [];
 let nightNum = 1, dayNum = 1;
@@ -122,13 +114,83 @@ let gufato = null;     // bersaglio corrente del GUFO e nome gufato (se presente
 let mortiFaseNotte = []; // morti registrati notte corrente
 let graveLog = [];     // storico morti
 let nightPlayersSnapshot = []; // copia dei giocatori all'inizio della notte
-const actionRoles = ['JOKER','MERETRICE','GUFO','VEGGENTE','LUPO'];
 let JOKER, MERETRICE, VEGGENTE, GUFO, LUPO;
+let phase = 'night_first'; // night_first, night_second, recap_night, day_first, day_secondBallot, recap_rogo
+let ballotaggio = [];      // array candidati in ballottaggio
+let inSecondBallot = false;
+let votiGiorno = {};       // map voter -> target
+let vincitorePrimo = null; // nome vincitore primo sondaggio quando unico
+let ultimoRogo = null;
+let currentVoter = null;
+let names = []; // Lista giocatori definitiva
+let selectedPlayerCount = 7;
+
+//=====================
+//	CONST
+//=====================
+
+const ruoloVillico = ["VEGGENTE","MEDIUM","GUFO","VILLICO","MASSONE","JOKER"];
+
+const ruoliMannari = ["LUPO","LUPO ALFA","L'INDEMONIATO","MERETRICE","CRICETO"];
+
+const ruoloBuoni = ["VEGGENTE","MEDIUM","MERETRICE","GUFO","MASSONE","VILLICO"];
+
+const ruoloCattivi = ["LUPO","LUPO ALFA","JOKER"];
+
+// Sezioni principali
+const nightSection = document.getElementById('nightSection');
+const nightNumEl = document.getElementById('nightNum');
+const nightState = document.getElementById('nightState');
+const daySection = document.getElementById('daySection');
+const dayNumEl = document.getElementById('dayNum');
+// Aree per interazioni giocatori
+const playersArea = document.getElementById('playersArea');
+const actionArea = document.getElementById('actionArea');
+const playersDay = document.getElementById('playersDay');
+const voteArea = document.getElementById('voteArea');
+const voteInfo = document.getElementById('voteInfo');
+// Timer e bottoni di controllo
+const timerDiv = document.getElementById('timerDiv');
+const continueToDayBtn = document.getElementById('continueToDayBtn');
+const continueToNightBtn = document.getElementById('continueToNightBtn');
+const btnCalcolaVoti = document.getElementById('btnCalcolaVoti');
+// Riepiloghi
+const recapNightSection = document.getElementById('recapNightSection');
+const recapNightCard = document.getElementById('recapNightCard');
+const recapRogoSection = document.getElementById('recapRogoSection');
+const recapRogoCard = document.getElementById('recapRogoCard');
+// Ruoli speciali
+const lupoAlfa = players.find(p => p.role === "LUPO ALFA" && p.alive);
+const lupoNormale = players.find(p => p.role === "LUPO" && p.alive);
+// Messaggi standard
+const MSG_NO_ACTION = "NON HAI POTUTO FARE L'AZIONE";
+const MSG_NO_INFO = "NON HO INFORMAZIONE PER TE";
+const MSG_NO_DEAD_AT_ROGO = "NESSUNO È MORTO AL ROGO";
+const MSG_ACTION = "hai agito indisturbato";
+// Ruoli
+const baseRoles = ["JOKER","MERETRICE","LUPO","GUFO","VEGGENTE","MEDIUM","CRICETO"];
+const actionRoles = ['JOKER','MERETRICE','GUFO','VEGGENTE','LUPO'];
+// Testi fase giorno
+const DAY_TEXT = {SELECT_PLAYER: "CLICCA IL TUO NOME",ACTIONS: "FASE: AZIONI",VOTO: "FASE: VOTO"};
+// Bottoni e setup
+const startBtn = document.getElementById('startBtn');
+const playerCountSection = document.getElementById("playerCountSection");
+const extraPlayersDiv = document.getElementById("extraPlayersDiv");
+const playerRow = playerCountSection.querySelector('.row');
+const allNames = ["ANDREA","VALE","MATTIA","DAIANA","MATTEO","GIULIA","MICHAEL"];
+const quickRestartBtn = document.getElementById("quickRestartBtn");
+const confirmRolesBtn = document.getElementById('confirmRolesBtn');
+// Fine partita
+const endScreen = document.getElementById("endGameScreen");
+const winnerBox = document.getElementById("winnerBox");
+const finalLog = document.getElementById("finalLog");
+const logContent = document.getElementById('logContent');
+// descrizione ruoli
 const ruoloDescrizioni = {
     "JOKER": "PUÒ SILENZIARE UN ALTRO GIOCATORE OGNI NOTTE. SE INDICA IL PROTETTO DALLA MERETRICE IL SUO EFFETTO NON VALE.",
     "MERETRICE": "PROTEGGE UN GIOCATORE DA OGNI AZIONE SUBITA DURANTE LA NOTTE. SE DURANTE LA NOTTE VIENE UCCISA DAL LUPO PORTA CON SÉ ANCHE IL PROTETTO.",
     "LUPO": "UCCIDE UN GIOCATORE DI NOTTE. SE IN PRESENZA DEL LUPO ALFA RIMANE INERME FINCHÉ QUEST'ULTIMO È VIVO.",
-    "LUPO ALFA": "DECIDE CON I LUPI CHI ATTACCARE. SE VIVO AGISCE PER CONTO DEI LUPI DURANTE LA NOTTE.",
+    "LUPO ALFA": "SE VIVO AGISCE PER CONTO DEI LUPI DURANTE LA NOTTE.",
     "GUFO": "SCOPRE SE UN GIOCATORE È UN MANNARO. IN CASO DI INDECISIONE PER IL ROGO LA PERSONA GUFATA HA 1 VOTO IN PIÙ.",
     "VEGGENTE": "SCOPRE IL RUOLO DI UN GIOCATORE DURANTE LA NOTTE.",
     "MEDIUM": "SA CHI È MORTO AL ROGO DURANTE LA NOTTE.",
@@ -138,52 +200,15 @@ const ruoloDescrizioni = {
     "MASSONE": "SA CHI È L'ALTRO MASSONE."
 };
 
-// Votazione / ballottaggio
-let phase = 'night_first'; // night_first, night_second, recap_night, day_first, day_secondBallot, recap_rogo
-let ballotaggio = [];      // array candidati in ballottaggio
-let inSecondBallot = false;
-let votiGiorno = {};       // map voter -> target
-let vincitorePrimo = null; // nome vincitore primo sondaggio quando unico
-let ultimoRogo = null;
-let currentVoter = null;
-
 //=====================
-//	copertura dynamic island
+//	GENERATORE DI TASTI DA 7-12 PLAYER
 //=====================
-const notchOverlay = document.createElement('div');
-notchOverlay.id = 'notchOverlay';
-notchOverlay.style = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: env(safe-area-inset-top); /* altezza della Dynamic Island / notch */
-    background-color: #0ea5a4; /* colore dello sfondo della tua app */
-    z-index: 10000; /* sopra tutti gli altri elementi */
-    pointer-events: none; /* così non blocca i click */
-`;
-
-// Aggiungiamolo al body
-document.body.appendChild(notchOverlay);
-
-//=====================
-//	AGGIUNTA PER 8 GIOCATORI
-//=====================
-const startBtn = document.getElementById('startBtn');
-const playerCountSection = document.getElementById("playerCountSection");
-const extraPlayersDiv = document.getElementById("extraPlayersDiv");
-let selectedPlayerCount = 7;
-
-const allNames = ["ANDREA","VALE","MATTIA","DAIANA","MATTEO","GIULIA","MICHAEL"];
-let names = []; // Lista giocatori definitiva
-
-const playerRow = playerCountSection.querySelector('.row');
 
 [7,8,9,10,11,12].forEach(n => {
     const btn = document.createElement('button');
     btn.className = 'primary';
     btn.textContent = `${n} Giocatori`;
-    
+ 
 btn.onclick = () => {
     selectedPlayerCount = n;
 
@@ -208,44 +233,6 @@ btn.onclick = () => {
 });
 
 //=====================
-//	Elementi UI
-//=====================
-
-const nightSection = document.getElementById('nightSection');
-const nightNumEl = document.getElementById('nightNum');
-const nightState = document.getElementById('nightState');
-const playersArea = document.getElementById('playersArea');
-const actionArea = document.getElementById('actionArea');
-const timerDiv = document.getElementById('timerDiv');
-
-const recapNightSection = document.getElementById('recapNightSection');
-const recapNightCard = document.getElementById('recapNightCard');
-const continueToDayBtn = document.getElementById('continueToDayBtn');
-
-const daySection = document.getElementById('daySection');
-const playersDay = document.getElementById('playersDay');
-const voteArea = document.getElementById('voteArea');
-const voteInfo = document.getElementById('voteInfo');
-const dayNumEl = document.getElementById('dayNum');
-const btnCalcolaVoti = document.getElementById('btnCalcolaVoti');
-const lupoAlfa = players.find(p => p.role === "LUPO ALFA" && p.alive);
-const lupoNormale = players.find(p => p.role === "LUPO" && p.alive);
-const recapRogoSection = document.getElementById('recapRogoSection');
-const recapRogoCard = document.getElementById('recapRogoCard');
-const continueToNightBtn = document.getElementById('continueToNightBtn');
-const MSG_NO_ACTION = "NON HAI POTUTO FARE L'AZIONE";
-const MSG_NO_INFO = "NON HO INFORMAZIONE PER TE";
-const MSG_NO_DEAD_AT_ROGO = "NESSUNO È MORTO AL ROGO";
-const MSG_ACTION = "hai agito indisturbato";
-const baseRoles = ["JOKER","MERETRICE","LUPO","GUFO","VEGGENTE","MEDIUM","CRICETO"];
-
-const DAY_TEXT = {
-    SELECT_PLAYER: "CLICCA IL TUO NOME",
-    ACTIONS: "FASE: AZIONI",
-    VOTO: "FASE: VOTO"
-};
-
-//=====================
 //	Utility
 //=====================
 
@@ -258,55 +245,73 @@ function updateTitles(){ nightNumEl.textContent = nightNum; dayNumEl.textContent
 //	ASSEGNAZIONE RUOLI RANDOM
 //=====================
 
-function assignRoles(){
-  const shuffled = shuffle(baseRoles.slice());
-  players = names.map((n,i)=>({name:n,role:shuffled[i],alive:true,acted:false}));
-  // reset stati
-  silenziato = null; protezioni = {}; azioni = {}; gufato = null; mortiFaseNotte = []; graveLog = [];
-  phase = 'night_first'; ballotaggio=[]; inSecondBallot=false; votiGiorno={}; gufato=null; vincitorePrimo=null;
-  updateTitles();
+function assignRoles() {
+	const shuffled = shuffle(baseRoles.slice());
+	players = names.map((n, i) => ({
+		name: n,
+		role: shuffled[i],
+		alive: true,
+		acted: false
+	}));
+
+	// reset stati
+	silenziato = null;
+	protezioni = {};
+	azioni = {};
+	gufato = null;
+	mortiFaseNotte = [];
+	graveLog = [];
+	phase = 'night_first';
+	ballotaggio = [];
+	inSecondBallot = false;
+	votiGiorno = {};
+	gufato = null;
+	vincitorePrimo = null;
+
+	updateTitles();
 }
 
 //=====================
 //	VITE DEI GIOCATORI
 //=====================
 
-players = names.map((n,i)=>({
-    name: n,
-    role: shuffled[i],
-    alive: true,
-    acted: false,
-    lives: 1   // default 1 vita
+players = names.map((n, i) => ({
+	name: n,
+	role: shuffled[i],
+	alive: true,
+	acted: false,
+	lives: 1   // default 1 vita
 }));
 
 // Imposta vite speciali
 players.forEach(p => {
-    if(p.role === "VILLICO" && players.length >= 10) p.lives = 2;
+	if (p.role === "VILLICO" && players.length >= 10) p.lives = 2;
 });
 
 //=====================
 //	AGGIUNTA PULSANTI PER EXTRA PLAYER
 //=====================
 
-function createExtraInputs(count){
-    extraPlayersDiv.innerHTML = '';
-    for(let i = 8; i <= count; i++){
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.placeholder = `Nome ${i}° giocatore`;
-	input.style = `
-	  text-transform:uppercase;
-	  width: 100%;
-	  max-width: 400px
-	  padding:10px;
-	  border-radius:8px;
-	  border:none;
-	  font-weight:bold;
-	`;
+function createExtraInputs(count) {
+	extraPlayersDiv.innerHTML = '';
 
-        input.oninput = () => input.value = input.value.toUpperCase();
-        extraPlayersDiv.appendChild(input);
-    }
+	for (let i = 8; i <= count; i++) {
+		const input = document.createElement('input');
+		input.type = 'text';
+		input.placeholder = `Nome ${i}° giocatore`;
+		input.style = `
+			text-transform: uppercase;
+			width: 100%;
+			max-width: 400px;
+			padding: 10px;
+			border-radius: 8px;
+			border: none;
+			font-weight: bold;
+		`;
+
+		input.oninput = () => input.value = input.value.toUpperCase();
+		extraPlayersDiv.appendChild(input);
+	}
 }
 
 //=====================
@@ -320,35 +325,219 @@ function setupRolesByPlayerCount(count){
 
     if(count >= 8) baseRoles.push("VILLICO");
     if(count >= 9) baseRoles.push("L'INDEMONIATO");
-
     if(count >= 10) {
         baseRoles.push("LUPO ALFA");
         if(!actionRoles.includes("LUPO ALFA")) actionRoles.push("LUPO ALFA");
-
         // rimuovo il LUPO normale se presente
         const i = actionRoles.indexOf("LUPO");
         if(i !== -1) actionRoles.splice(i,1);
     }
-
     if(count >= 11){
         baseRoles.push("MASSONE","MASSONE");
         const i = baseRoles.indexOf("VILLICO");
         if(i !== -1) baseRoles.splice(i,1);
     }
-
     if(count === 12){
         baseRoles.push("VILLICO");
     }
 }
 
 //=====================
-//	STAMPATA SUL LOG DEI RUOLI ASSOCIATI AL NOME
+//	START
 //=====================
 
-function logRoleDistribution() {
-    log('🎲 Distribuzione iniziale dei ruoli:');
-    players.forEach(p => log(`- ${p.name}: ${p.role}`));
+startBtn.onclick = () => {
+    // Raccolgo i nomi dei giocatori
+    names = allNames.slice(0, 7).map(n => n.toUpperCase());
+    const inputs = extraPlayersDiv.querySelectorAll('input');
+    inputs.forEach(inp => {
+        if (inp.value.trim() !== '') {
+            names.push(inp.value.trim().toUpperCase());
+        }
+    });
+
+    if (names.length !== selectedPlayerCount) {
+        alert("Inserisci tutti i nomi!");
+        return;
+    }
+
+    setupRolesByPlayerCount(names.length);
+
+    // Nascondo la sezione dei nomi
+    playerCountSection.style.display = 'none';
+    extraPlayersDiv.style.display = 'none';
+    startBtn.style.display = 'none';
+
+//=====================
+//	OVERLAY CHE DICHIARA LE REGOLE
+//=====================
+    const rulesOverlay = document.createElement('div');
+    rulesOverlay.id = 'rulesOverlay';
+    rulesOverlay.style = `
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.9);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    `;
+
+    rulesOverlay.innerHTML = `
+        <div style="
+            max-width: 420px;
+            width: 100%;
+            background: #0f1720;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+        ">
+            <h2 style="margin-top:0">📜 REGOLE DEL GIOCO SENZA IL NARRATORE</h2>
+            <div style="text-align:left; font-size:14px; line-height:1.5">
+                <p>🌙<strong>LA NOTTE</strong> SI SVOLGE IN 2 TURNI:</p>
+                <p><strong>NOTTE FASE 1:</strong> CONOSCI IL TUO RUOLO E SVOLGI L'AZIONE.</p>
+                <p><strong>NOTTE FASE 2:</strong> TI VENGONO COMUNICATE ALCUNE INFORMAZIONI.</p>
+                <p>🌤️<strong>IL GIORNO</strong> SI SVOLGE IN 2 TURNI:</p>
+                <p><strong>GIORNO:</strong> SI VOTA CHI VA ALLA BALLOTTAGGIO CON IL GUFATO SE C'E'.</p>
+                <p><strong>GIORNO:</strong> SE NON CE IL GUFATO QUELLO CON PIU VOTI VA AL ROGO.</p>
+                <p>🏆 <strong>VINCONO I BUONI</strong> SE RIESCONO AD UCCIDERE IL LUPO.</p>
+                <p>🏆 <strong>VINCONO I CATTIVI</strong> SE RIESCONO AD SBRANARE IL POPOLO.</p>
+                <p>🏆 <strong>VINCONO IL CRICETO</strong> SE RIMANE VIVO.</p>
+            </div>
+            <button id="rulesContinueBtn" style="
+                margin-top:20px;
+                width:100%;
+                padding:14px;
+                border:none;
+                border-radius:12px;
+                background:#0ea5a4;
+                color:#042024;
+                font-size:16px;
+                font-weight:bold;
+                cursor:pointer;
+            ">CONTINUA</button>
+        </div>
+    `;
+
+    document.body.appendChild(rulesOverlay);
+
+//=====================
+//	OVERLAY CHE DICHIARA I RUOLI
+//=====================
+    rulesOverlay.querySelector('#rulesContinueBtn').onclick = () => {
+        rulesOverlay.remove();
+
+        // Creo overlay PRE-GAME
+        const preGameOverlay = document.createElement('div');
+        preGameOverlay.id = 'preGameOverlay';
+        preGameOverlay.style = `
+            position: fixed;
+            top:0; left:0; right:0; bottom:0;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            text-align: center;
+        `;
+
+        preGameOverlay.innerHTML = `
+            <h2>CONOSCI TUTTI GLI EFFETTI DEI PERSONAGGI</h2>
+            <div style="margin-top:20px; display:flex; flex-direction:column; gap:15px; width:100%; max-width:300px;">
+                <button id="startGameBtn" style="
+                    padding:15px;
+                    font-size:18px;
+                    font-weight:bold;
+                    border:none;
+                    border-radius:12px;
+                    background:#0ea5a4;
+                    color:#042024;
+                    cursor:pointer;
+                ">INIZIA PARTITA</button>
+                <button id="explainRolesBtn" style="
+                    padding:15px;
+                    font-size:18px;
+                    font-weight:bold;
+                    border:none;
+                    border-radius:12px;
+                    background:#1e293b;
+                    color:#e6eef6;
+                    cursor:pointer;
+                ">SPIEGAMI I RUOLI</button>
+            </div>
+        `;
+
+        document.body.appendChild(preGameOverlay);
+//=====================
+//	PULSANTE INIZIA
+//=====================
+
+        preGameOverlay.querySelector('#startGameBtn').onclick = () => {
+            preGameOverlay.remove();
+            assignRoles();
+            logRoleDistribution();
+            renderNightFirst();
+        };
+
+//=====================
+//	PULSANTE SPIEGAMI I RUOLI
+//=====================
+
+        preGameOverlay.querySelector('#explainRolesBtn').onclick = () => {
+            preGameOverlay.remove();
+
+            const roleInfoSection = document.getElementById('roleInfoSection');
+            roleInfoSection.style.display = 'block';
+
+            const roleList = document.getElementById('roleList');
+            roleList.innerHTML = '';
+
+            baseRoles.forEach(r => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="role-card">
+                        <h3>${r}</h3>
+                        <p>${ruoloDescrizioni[r] || "Nessuna descrizione"}</p>
+                    </div>
+                `;
+                roleList.appendChild(li);
+            });
+        };
+    };
+};
+
+//=====================
+//	PULSANTE INIZIA PARTITA DOPO SPIEGAZIONE RUOLI
+//=====================
+
+confirmRolesBtn.onclick = () => {
+    // 1️⃣ Nasconde overlay / schermata ruoli
+    const overlay = document.getElementById('preGameOverlay');
+    if (overlay) overlay.remove(); // se esiste lo elimina
+
+    const roleInfoSection = document.getElementById('roleInfoSection');
+    if (roleInfoSection) roleInfoSection.style.display = 'none';
+
+    // 2️⃣ Avvia la partita
+    assignRoles();         // assegna i ruoli ai player
+    logRoleDistribution(); // opzionale
+    renderNightFirst();    // parte la NOTTE
+};
+
+//=====================
+//	PULSANTE RESTART PARTITA MENTRE SI STA GIOCANDO VICINO AL NOME DEL GIOCO
+//=====================
+
+function restartGame() {
+    if (confirm("⚠️ VUOI DAVVERO RIAVVIARE LA PARTITA? TUTTI I DATI ANDRANNO PERSI!")) {
+        window.location.reload();
+    }
 }
+quickRestartBtn.addEventListener("click", restartGame);
 
 //=====================
 //	FASE 1 NOTTE: LOGICA CHE GESTISCE LA RIVELAZIONE DEI RUOLI E DELLE AZIONI
@@ -493,36 +682,6 @@ if (player.role === "LUPO ALFA") {
 }
 
 //=====================
-//	FASE 2 NOTTE : UI DELLA FASE IN CUI DA LE INFORMAZIONI
-//=====================
-
-function renderNightSecond() {
-    phase = 'night_second';
-    nightState.textContent = DAY_TEXT.SELECT_PLAYER;
-    playersArea.innerHTML = '';
-    actionArea.innerHTML = '';
-    timerDiv.textContent = '';
-
-    // Mostra tutti i giocatori nello snapshot (anche se morti)
-    const toAct = nightPlayersSnapshot.filter(p => !p.acted);
-
-    if (toAct.length === 0) {
-        // Nessuno rimasto → mostra recap notte
-        showNightRecap();
-        return;
-    }
-
-    // Pulsanti per ciascun giocatore
-    toAct.forEach(p => {
-        const btn = document.createElement('button');
-        btn.className = 'playerBtn';
-        btn.textContent = p.name;
-        btn.onclick = () => showSecondInfoFor(p);
-        playersArea.appendChild(btn);
-    });
-}
-
-//=====================
 //	FASE 1 NOTTE : UI DELLA FASE IN CUI SELEZIONI IL BERSAGLIO
 //=====================
 
@@ -553,8 +712,12 @@ function showActionOptions(player) {
     const lupoAlfa = players.find(p => p.role === "LUPO ALFA" && p.alive);
 
     // Costruisci lista bersagli (vivi e diversi da sé stessi)
-    const targets = players.filter(t => t.alive && t.name !== player.name);
+    let targets = players.filter(t => t.alive && t.name !== player.name);
 
+    // Se il giocatore è LUPO ALFA, escludi l'altro LUPO
+    if (player.role === "LUPO ALFA") {
+        targets = targets.filter(t => !(t.role === "LUPO"));
+    }
     if (targets.length === 0) {
         // Nessun target disponibile
         const btn = document.createElement('button');
@@ -618,467 +781,7 @@ function showActionOptions(player) {
 }
 
 //=====================
-//	AVVIO FASE 2 NOTTE : SCREEN-> RESET PULSANTI-> RISOLVI AZIONI-> AVVIA FASE 2
-//=====================
-
-function startNightSecond() {
-    // 1️⃣ Reset stato acted per tutti i giocatori vivi (fase 2)
-    players.forEach(p => p.acted = false);
-
-    // 2️⃣ Snapshot dei giocatori vivi
-    nightPlayersSnapshot = players.filter(p => p.alive);
-
-    // 3️⃣ Risolvi azioni della notte (LUPO, MERETRICE, VEGGENTE, GUFO, JOKER)
-    resolveNightActionsFull();
-
-    // 4️⃣ Mostra UI fase 2
-    renderNightSecond();
-}
-
-//=====================
-//	FASE 2 DELLA NOTTE: DEFINIZIONE DEI MESSAGGI DI RISPOSTA
-//=====================
-
-function showSecondInfoFor(player){
-    playersArea.innerHTML = '';
-    actionArea.innerHTML = '';
-    timerDiv.textContent = '';
-    nightState.textContent = `FASE: INFORMAZIONI — ${player.name}`;
-
-    let infoMsg = MSG_NO_INFO;
-
-    //=====================
-    // VEGGENTE
-    //=====================
-    switch(player.role) {
-        case "VEGGENTE":
-            if (player.infoMsg !== MSG_NO_ACTION && azioni.VEGGENTE) {
-                const bersaglio = findPlayer(azioni.VEGGENTE);
-                if (bersaglio) {
-                    infoMsg = ruoliMannari.includes(bersaglio.role)
-                        ? `${bersaglio.name} È UN MANNARO`
-                        : `${bersaglio.name} NON È UN MANNARO`;
-                }
-            }
-            break;
-
-    //=====================
-    //	MEDIUM
-    //=====================
-
-        case "MEDIUM":
-            if (player.infoMsg !== MSG_NO_ACTION) {
-                if (!ultimoRogo) {
-                    infoMsg = MSG_NO_DEAD_AT_ROGO;
-                } else {
-                    const morto = findPlayer(ultimoRogo);
-                    if (morto) {
-                        infoMsg = `AL ROGO È MORTO ${morto.name}. ERA ${ruoliMannari.includes(morto.role) ? "UN MANNARO" : "UN NON MANNARO"}`;
-                    }
-                }
-            }
-            break;
-    //=====================
-    //	MEDIUM
-    //=====================
-
-        case "GUFO":
-            if (player.infoMsg === MSG_NO_ACTION) {
-                infoMsg = MSG_NO_ACTION; // silenziato o azione annullata
-            } else if (gufato) {
-                const bersaglio = findPlayer(gufato);
-                if (bersaglio && bersaglio.alive) {
-                    infoMsg = MSG_NO_INFO; // azione riuscita, ma nessuna info extra
-                }
-            }
-            break;
-
-    //=====================
-    //	SE HANNO ESEGUITO L'AZIONE REGOLARMENTE (JOKER,MERETRICE,LUPO)
-    //=====================
-
-        default:
-            if (player.infoMsg === MSG_NO_ACTION) {
-                infoMsg = MSG_NO_ACTION;
-            } else {
-                infoMsg = MSG_NO_INFO;
-            }
-            break;
-    }
-
-//=====================
-//	SALVA E MOSTRA
-//=====================
-    player.infoMsg = infoMsg;
-
-    const info = document.createElement('div');
-    info.className = 'card';
-    info.innerHTML = `<strong>${player.name}</strong><br/>${infoMsg}`;
-    actionArea.appendChild(info);
-
-    startCountdown(3, () => {
-        player.acted = true;
-        renderNightSecond();
-    });
-}
-
-//=====================
-//	FASE 2 DELLA NOTTE: GESTIONE DEL TIMER QUANDO OTTIENI LE INFORMAZIONI
-//=====================
-
-function startCountdown(seconds, cb){
-  timerDiv.textContent = `Tempo restante: ${seconds}s`;
-  let c = seconds;
-  const id = setInterval(()=>{
-    c--;
-    timerDiv.textContent = `Tempo restante: ${c}s`;
-    if(c<=0){ clearInterval(id); timerDiv.textContent=''; cb(); }
-  },1000);
-}
-
-//=====================
-//	FASE 1 GIORNO: UI DEL GIORNO
-//=====================
-
-function startDay(){
-  phase = 'day_first';
-  daySection.style.display='block';
-  recapNightSection.style.display='none';
-  nightSection.style.display='none';
-  recapRogoSection.style.display='none';
-  dayState.textContent = 'CLICCA IL TUO NOME'
-  document.getElementById('dayNum').textContent = dayNum;
-  votiGiorno = {};
-  ballotaggio = [];
-  inSecondBallot = false;
-  vincitorePrimo = null;
-  // note: gufato è già impostato in notte se il GUFO ha agito
-  renderPlayerVoteButtons();
-  updateVoteInfo();
-}
-
-//=====================
-//	FASE 1-2 GIORNO: UI CHE SPIEGA CHI PUOI VOTARE
-//=====================
-
-function updateVoteInfo(){
-  if(phase === 'day_first'){
-    voteInfo.textContent = `PRIMO SONDAGGIO: NON PUOI VOTARE IL GUFATO (${gufato ? gufato : 'nessuno'})`;
-  } else if(phase === 'day_second'){
-    voteInfo.textContent = `BALLOTTAGGIO: CHI VUOI MANDARE AL ROGO (${ballotaggio.join(', ')})`;
-  } else {
-    voteInfo.textContent = '';
-  }
-}
-
-//=====================
-//	FASE 1-2 GIORNO: UI CHE GESTISCE CHI DEVE ANCORA VOTARE E CHI DEVE VOTARE
-//=====================
-
-function renderPlayerVoteButtons() {
-  playersDay.innerHTML = '';
-  voteArea.innerHTML = '';
-  dayState.textContent = DAY_TEXT.SELECT_PLAYER;
-  btnCalcolaVoti.style.display = 'none';
-
-  let voters;
-  if(!inSecondBallot){
-    // PRIMO SONDAGGIO: solo giocatori vivi, escluse persone che hanno già votato e il gufato
-    voters = players.filter(p => p.alive && !(p.name in votiGiorno) && p.name !== gufato);
-  } else {
-    // SECONDO BALLOTTAGGIO: solo i candidati rimasti non votanti
-    voters = players.filter(p => p.alive && !ballotaggio.includes(p.name) && !(p.name in votiGiorno));
-  }
-
-  // Mostra pulsanti solo per i votanti corretti
-  if(voters.length === 0){
-    if(Object.keys(votiGiorno).length > 0){
-      btnCalcolaVoti.style.display = 'inline-block';
-    }
-    updateVoteInfo();
-    return;
-  }
-
-  voters.forEach(v => {
-    const b = document.createElement('button');
-    b.className = 'playerBtn';
-    b.textContent = v.name;
-    b.onclick = () => showVoteOptionsFor(v);
-    playersDay.appendChild(b);
-  });
-
-  updateVoteInfo();
-}
-
-//=====================
-//	FASE 1-2 GIORNO: UI CHE GESTISCE CHI DEVE ANCORA VOTARE E CHI DEVE VOTARE
-//=====================
-
-function showVoteOptionsFor(voter){
-  playersDay.innerHTML=''; voteArea.innerHTML=''; btnCalcolaVoti.style.display='none';
-  dayState.textContent = DAY_TEXT.VOTO;
-  currentVoter = voter.name;
-  // determinare le opzioni votabili in base alla fase
-  let options = [];
-  if(!inSecondBallot){
-    // primo sondaggio: tutti gli alive tranne sé stessi e il gufato
-    options = players.filter(p=>p.alive && p.name !== voter.name && p.name !== gufato).map(p=>p.name);
-  } else {
-    // secondo ballot: possono votare solo i candidati (ballotaggio)
-    options = ballotaggio.slice().filter(n => n !== voter.name);
-  }
-
-  options.forEach(opt=>{
-    const btn = document.createElement('button'); btn.className='actionBtn'; btn.textContent = opt;
-    btn.onclick = ()=>{
-      votiGiorno[voter.name] = opt;
-      renderPlayerVoteButtons();
-    };
-    voteArea.appendChild(btn);
-  });
-}
-
-//=====================
-//	FASE 1-2 GIORNO: LOGICA SUL CALCOLO DI VOTO E CHI DEVE ANDARE AL ROGO
-//=====================
-
-btnCalcolaVoti.onclick = ()=> { computeVotes(); };
-
-function computeVotes() {
-    // Conta i voti
-    const tally = {};
-    players.filter(p => p.alive).forEach(p => tally[p.name] = 0);
-    Object.values(votiGiorno).forEach(v => {
-        if (tally[v] !== undefined) tally[v]++;
-    });
-
-    const anyVotes = Object.values(tally).some(c => c > 0);
-    if (!anyVotes) {
-        btnCalcolaVoti.style.display = 'none';
-        return;
-    }
-
-    // Trova il massimo dei voti e i candidati corrispondenti
-    const maxV = Math.max(...Object.values(tally));
-    let topCandidates = Object.keys(tally).filter(k => tally[k] === maxV);
-
-    // Primo turno (non ballot)
-    if (!inSecondBallot) {
-
-        // Se non c’è gufato → unica votazione
-        if (!gufato) {
-            if (topCandidates.length === 1) {
-                eliminatePlayer(topCandidates[0], 'rogo');
-            } else {
-                // pareggio → elimina uno casualmente
-                const randomIndex = Math.floor(Math.random() * topCandidates.length);
-                eliminatePlayer(topCandidates[randomIndex], 'rogo_pareggio');
-            }
-            return;
-        }
-
-        // C'è gufato → escludi gufato dai topCandidates
-        topCandidates = topCandidates.filter(n => n !== gufato);
-
-        // Controlla quanti candidati rimangono vivi
-        const aliveCandidates = topCandidates.filter(n => findPlayer(n)?.alive);
-
-        if (aliveCandidates.length === 1) {
-            // Solo un candidato vivo → secondo ballot con gufato
-            ballotaggio = [aliveCandidates[0], gufato].filter(n => findPlayer(n)?.alive);
-
-            // Se rimane solo un candidato → elimina direttamente
-            if (ballotaggio.length === 1) {
-                eliminatePlayer(ballotaggio[0], 'rogo_secondo_ballottaggio');
-                return;
-            } else if (ballotaggio.length === 0) {
-                showRecapRogoNoElimination([]);
-                return;
-            }
-
-            inSecondBallot = true;
-            votiGiorno = {};
-            phase = 'day_second';
-            updateVoteInfo();
-            renderPlayerVoteButtons();
-            return;
-
-        } else if (aliveCandidates.length > 1) {
-            // Pareggio tra più candidati → secondo ballot tra loro
-            ballotaggio = aliveCandidates.slice();
-            inSecondBallot = true;
-            votiGiorno = {};
-            phase = 'day_second';
-            updateVoteInfo();
-            renderPlayerVoteButtons();
-            return;
-        } else {
-            // Nessun candidato vivo → niente eliminazione
-            showRecapRogoNoElimination([]);
-            return;
-        }
-    }
-
-    // Secondo ballot
-    if (inSecondBallot) {
-        const aliveCandidates = ballotaggio.filter(n => findPlayer(n)?.alive);
-        if (aliveCandidates.length <= 1) {
-            // Solo uno rimasto → va al rogo
-            eliminatePlayer(aliveCandidates[0], 'rogo_secondo_ballottaggio');
-        } else {
-            // Due candidati → verifica pareggio
-            const votes1 = Object.values(votiGiorno).filter(v => v === aliveCandidates[0]).length;
-            const votes2 = Object.values(votiGiorno).filter(v => v === aliveCandidates[1]).length;
-
-            if (votes1 === votes2) {
-                // Pareggio → va al rogo il gufato
-                if (gufato && findPlayer(gufato)?.alive) {
-                    eliminatePlayer(gufato, 'rogo_pareggio_secondo_ballottaggio');
-                }
-            } else {
-                // Chi ha più voti va al rogo
-                const toEliminate = votes1 > votes2 ? aliveCandidates[0] : aliveCandidates[1];
-                eliminatePlayer(toEliminate, 'rogo_secondo_ballottaggio');
-            }
-        }
-    }
-}
-
-
-//=====================
-//	RECAP NOTTE : MORTO E GUFATO + CONTROLLO VITTORIA
-//=====================
-
-function showNightRecap() {
-    // Nascondi notte e mostra recap
-    nightSection.style.display = 'none';
-    recapNightSection.style.display = 'block';
-    recapNightCard.innerHTML = '';
-
-    // 1️⃣ Mostra morti della notte
-    if (mortiFaseNotte.length) {
-        const d = document.createElement('div');
-        d.className = 'card';
-        d.innerHTML = `<strong>💀 MORTI DELLA NOTTE:</strong> ${mortiFaseNotte.join(', ')}`;
-        recapNightCard.appendChild(d);
-    } else {
-        const d = document.createElement('div');
-        d.className = 'card';
-        d.textContent = 'NESSUNA VITTIMA NELLA NOTTE.';
-        recapNightCard.appendChild(d);
-    }
-
-    // 2️⃣ Mostra gufate
-    const d = document.createElement('div');
-    d.className = 'card';
-
-    if (gufato) {
-        const t = findPlayer(gufato);
-        if (t && t.alive) {
-            d.innerHTML = `<strong>👁️ GUFO HA PUNTATO SU:</strong> ${t.name}`;
-        } else {
-            d.textContent = '👁️ NESSUN GUFATO.';
-        }
-    } else {
-        d.textContent = '👁️ NESSUN GUFATO.';
-    }
-
-    recapNightCard.appendChild(d);
-
-    // 3️⃣ Controllo vittoria subito dopo la notte
-    if (controllaFinePartita()) return;
-
-    // 4️⃣ Prepara azioni per il giorno: reset temporanei
-    azioni = {};
-    protezioni = {};
-    // mortiFaseNotte rimane per log e medium
-}
-
-//=====================
-//	ELIMINAZIONE E RECAP ROGO + CONTROLLO VITTORIA
- //=====================
-
-function eliminatePlayer(name, reason) {
-    const p = findPlayer(name);
-    if (!p) return;
-
-    // Segna il giocatore come morto
-    p.alive = false;
-    ultimoRogo = p.name;
-    log(`💀 ${p.name} è stato eliminato (${reason})`);
-
-    // Reset voti e ballottaggio
-    ballotaggio = [];
-    inSecondBallot = false;
-    votiGiorno = {};
-
-    // Controllo vittoria immediato
-    if (controllaFinePartita()) return;
-
-    // Mostra recap rogo
-    daySection.style.display = 'none';
-    recapRogoSection.style.display = 'block';
-    recapRogoCard.innerHTML = `<div class="card">💀 AL ROGO È MORTO: <strong>${name}</strong></div>`;
-}
-
-function showRecapRogoNoElimination(tiedList) {
-    daySection.style.display = 'none';
-    recapRogoSection.style.display = 'block';
-    recapRogoCard.innerHTML = `<div class="card">🔔 Pareggio nel secondo ballottaggio tra: ${tiedList.join(', ')}. <strong>Nessuna eliminazione</strong>.</div>`;
-
-    // Reset ballottaggio e voti
-    ballotaggio = [];
-    inSecondBallot = false;
-    votiGiorno = {};
-}
-
-//=====================
-//	DOPO IL CONTINUA TORNA LA NOTTE CON AGGIORNAMENTO PER NUMERO NOTTE
-//=====================
-
-continueToNightBtn.onclick = () => {
-    recapRogoSection.style.display = 'none';
-
-    // Incrementa la notte
-    nightNum++;
-    updateTitles();
-
-    // Reset stato notte
-    players.forEach(p => {
-        p.acted = false;
-        p.infoMsg = null; // ✅ RESET INFO QUI
-    });
-
-    azioni = {};
-    protezioni = {};
-    mortiFaseNotte = [];
-    gufato = null;
-
-    // 🔹 CONTROLLO LUPO ALFA
-    const lupoAlfa = players.find(p => p.role === "LUPO ALFA" && p.alive);
-    if (!lupoAlfa) {
-        // LUPO ALFA è morto → LUPO normale diventa un actionRole
-        if (!actionRoles.includes("LUPO")) actionRoles.push("LUPO");
-    }
-
-    // ✅ Pulisci snapshot della notte precedente
-    nightPlayersSnapshot = [];
-
-    nightSection.style.display = 'block';
-    renderNightFirst();
-};
-
-//=====================
-//	DOPO IL CONTINUA TORNA IL GIORNO CON AGGIORNAMENTO PER NUMERO GIORNO
-//=====================
-
-continueToDayBtn.onclick = ()=>{
-  recapNightSection.style.display = 'none';
-  startDay();
-};
-
-//=====================
-//	FASE 1-2 NOTTE: LOGICHE PER TUTTE LE AZIONI
+//	FASE 1 NOTTE: CALCOLO LOGICHE PER TUTTE LE AZIONI
 //=====================
 
 function resolveNightActionsFull() {
@@ -1093,9 +796,7 @@ JOKER = players.find(p => p.role === "JOKER" && p.alive) || null;
 MERETRICE = players.find(p => p.role === "MERETRICE" && p.alive) || null;
 VEGGENTE = players.find(p => p.role === "VEGGENTE" && p.alive) || null;
 GUFO = players.find(p => p.role === "GUFO" && p.alive) || null;
-LUPO = players.find(p =>
-    (p.role === "LUPO" || p.role === "LUPO ALFA") && p.alive
-) || null;
+LUPO = players.find(p =>(p.role === "LUPO" || p.role === "LUPO ALFA") && p.alive) || null;
 let jokerSilenzioAnnullato = false;
 
 //=====================
@@ -1270,136 +971,501 @@ players.forEach(p => {
 }
 
 //=====================
-//	START
+//	AVVIO FASE 2 NOTTE : SCREEN-> RESET PULSANTI-> RISOLVI AZIONI-> AVVIA FASE 2
 //=====================
 
-startBtn.onclick = () => {
-    names = allNames.slice(0,7).map(n => n.toUpperCase());
-    const inputs = extraPlayersDiv.querySelectorAll('input');
-    inputs.forEach(inp => {
-        if(inp.value.trim() !== ''){
-            names.push(inp.value.trim().toUpperCase());
-        }
-    });
+function startNightSecond() {
+    // 1️⃣ Reset stato acted per tutti i giocatori vivi (fase 2)
+    players.forEach(p => p.acted = false);
 
-    if(names.length !== selectedPlayerCount){
-        alert("Inserisci tutti i nomi!");
+    // 2️⃣ Snapshot dei giocatori vivi
+    nightPlayersSnapshot = players.filter(p => p.alive);
+
+    // 3️⃣ Risolvi azioni della notte (LUPO, MERETRICE, VEGGENTE, GUFO, JOKER)
+    resolveNightActionsFull();
+
+    // 4️⃣ Mostra UI fase 2
+    renderNightSecond();
+}
+//=====================
+//	FASE 2 NOTTE : UI DELLA FASE IN CUI DA LE INFORMAZIONI
+//=====================
+
+function renderNightSecond() {
+    phase = 'night_second';
+    nightState.textContent = DAY_TEXT.SELECT_PLAYER;
+    playersArea.innerHTML = '';
+    actionArea.innerHTML = '';
+    timerDiv.textContent = '';
+
+    // Mostra tutti i giocatori nello snapshot (anche se morti)
+    const toAct = nightPlayersSnapshot.filter(p => !p.acted);
+
+    if (toAct.length === 0) {
+        // Nessuno rimasto → mostra recap notte
+        showNightRecap();
         return;
     }
 
-    setupRolesByPlayerCount(names.length);
-
-    // Nascondo la sezione dei nomi
-    playerCountSection.style.display = 'none';
-    extraPlayersDiv.style.display = 'none';
-    startBtn.style.display = 'none';
-
-    // ✅ Creo overlay intermedio
-    const overlay = document.createElement('div');
-    overlay.id = 'preGameOverlay';
-    overlay.style = `
-        position: fixed;
-        top:0; left:0; right:0; bottom:0;
-        background: rgba(0,0,0,0.85);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-        color: #fff;
-        font-family: Arial, sans-serif;
-        padding: 20px;
-        text-align: center;
-    `;
-    overlay.innerHTML = `
-        <h2>CONOSCI TUTTI GLI EFFETTI DEI PERSONAGGI</h2>
-        <div style="margin-top:20px; display:flex; flex-direction:column; gap:15px; width:100%; max-width:300px;">
-            <button id="startGameBtn" style="padding:15px; font-size:18px; font-weight:bold; border:none; border-radius:12px; background:#0ea5a4; color:#042024; cursor:pointer;">INIZIA PARTITA</button>
-            <button id="explainRolesBtn" style="padding:15px; font-size:18px; font-weight:bold; border:none; border-radius:12px; background:#1e293b; color:#e6eef6; cursor:pointer;">SPIEGAMI I RUOLI</button>
-        </div>
-    `;
-    document.body.appendChild(overlay);
+    // Pulsanti per ciascun giocatore
+    toAct.forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = 'playerBtn';
+        btn.textContent = p.name;
+        btn.onclick = () => showSecondInfoFor(p);
+        playersArea.appendChild(btn);
+    });
+}
 
 //=====================
-//	PULSANTE INIZIA
+//	FASE 2 DELLA NOTTE: DEFINIZIONE DEI MESSAGGI DI RISPOSTA
 //=====================
 
-    document.getElementById('startGameBtn').onclick = () => {
-        overlay.remove();           // chiude overlay
-        assignRoles();              // assegna ruoli
-        logRoleDistribution();      // log dei ruoli (se usi)
-        renderNightFirst();         // parte la prima notte
-    };
+function showSecondInfoFor(player){
+    playersArea.innerHTML = '';
+    actionArea.innerHTML = '';
+    timerDiv.textContent = '';
+    nightState.textContent = `FASE: INFORMAZIONI — ${player.name}`;
+
+    let infoMsg = MSG_NO_INFO;
+
+    //=====================
+    // VEGGENTE
+    //=====================
+    switch(player.role) {
+        case "VEGGENTE":
+            if (player.infoMsg !== MSG_NO_ACTION && azioni.VEGGENTE) {
+                const bersaglio = findPlayer(azioni.VEGGENTE);
+                if (bersaglio) {
+                    infoMsg = ruoliMannari.includes(bersaglio.role)
+                        ? `${bersaglio.name} È UN MANNARO`
+                        : `${bersaglio.name} NON È UN MANNARO`;
+                }
+            }
+            break;
+
+    //=====================
+    //	MEDIUM
+    //=====================
+
+        case "MEDIUM":
+            if (player.infoMsg !== MSG_NO_ACTION) {
+                if (!ultimoRogo) {
+                    infoMsg = MSG_NO_DEAD_AT_ROGO;
+                } else {
+                    const morto = findPlayer(ultimoRogo);
+                    if (morto) {
+                        infoMsg = `AL ROGO È MORTO ${morto.name}. ERA ${ruoliMannari.includes(morto.role) ? "UN MANNARO" : "UN NON MANNARO"}`;
+                    }
+                }
+            }
+            break;
+    //=====================
+    //	MEDIUM
+    //=====================
+
+        case "GUFO":
+            if (player.infoMsg === MSG_NO_ACTION) {
+                infoMsg = MSG_NO_ACTION; // silenziato o azione annullata
+            } else if (gufato) {
+                const bersaglio = findPlayer(gufato);
+                if (bersaglio && bersaglio.alive) {
+                    infoMsg = MSG_NO_INFO; // azione riuscita, ma nessuna info extra
+                }
+            }
+            break;
+
+    //=====================
+    //	SE HANNO ESEGUITO L'AZIONE REGOLARMENTE (JOKER,MERETRICE,LUPO)
+    //=====================
+
+        default:
+            if (player.infoMsg === MSG_NO_ACTION) {
+                infoMsg = MSG_NO_ACTION;
+            } else {
+                infoMsg = MSG_NO_INFO;
+            }
+            break;
+    }
 
 //=====================
-//	PULSANTE SPIEGAMI I RUOLI
+//	SALVA E MOSTRA
 //=====================
+    player.infoMsg = infoMsg;
 
-    document.getElementById('explainRolesBtn').onclick = () => {
-        overlay.remove();                    // chiude overlay
-        const roleInfoSection = document.getElementById('roleInfoSection');
-        roleInfoSection.style.display = 'block';
+    const info = document.createElement('div');
+    info.className = 'card';
+    info.innerHTML = `<strong>${player.name}</strong><br/>${infoMsg}`;
+    actionArea.appendChild(info);
 
-        const roleList = document.getElementById('roleList');
-        roleList.innerHTML = '';
-        baseRoles.forEach(r => {
-            const li = document.createElement('li');
-            li.innerHTML = `<strong>${r}</strong>: ${ruoloDescrizioni[r] || "Nessuna descrizione"}`;
-            roleList.appendChild(li);
-        });
-    };
-};
+    startCountdown(3, () => {
+        player.acted = true;
+        renderNightSecond();
+    });
+}
 
 //=====================
-//	PULSANTE INIZIA PARTITA DOPO SPIEGAZIONE RUOLI
+//	FASE 2 DELLA NOTTE: GESTIONE DEL TIMER QUANDO OTTIENI LE INFORMAZIONI
 //=====================
 
-const confirmRolesBtn = document.getElementById('confirmRolesBtn');
-
-confirmRolesBtn.onclick = () => {
-    // 1️⃣ Nasconde overlay / schermata ruoli
-    const overlay = document.getElementById('preGameOverlay');
-    if (overlay) overlay.remove(); // se esiste lo elimina
-
-    const roleInfoSection = document.getElementById('roleInfoSection');
-    if (roleInfoSection) roleInfoSection.style.display = 'none';
-
-    // 2️⃣ Avvia la partita
-    assignRoles();         // assegna i ruoli ai player
-    logRoleDistribution(); // opzionale
-    renderNightFirst();    // parte la NOTTE
-};
+function startCountdown(seconds, cb){
+  timerDiv.textContent = `Tempo restante: ${seconds}s`;
+  let c = seconds;
+  const id = setInterval(()=>{
+    c--;
+    timerDiv.textContent = `Tempo restante: ${c}s`;
+    if(c<=0){ clearInterval(id); timerDiv.textContent=''; cb(); }
+  },1000);
+}
 
 //=====================
-//	PER ATTIVARE I LOG METTERE BLOCK
+//	FASE 1 GIORNO: UI DEL GIORNO
 //=====================
 
-    // Nascondi sezione iniziale
-    document.getElementById('logContainer').style.display = 'none';
+function startDay(){
+  phase = 'day_first';
+  daySection.style.display='block';
+  recapNightSection.style.display='none';
+  nightSection.style.display='none';
+  recapRogoSection.style.display='none';
+  dayState.textContent = 'CLICCA IL TUO NOME'
+  document.getElementById('dayNum').textContent = dayNum;
+  votiGiorno = {};
+  ballotaggio = [];
+  inSecondBallot = false;
+  vincitorePrimo = null;
+  // note: gufato è già impostato in notte se il GUFO ha agito
+  renderPlayerVoteButtons();
+  updateVoteInfo();
+}
 
 //=====================
-//	PULSANTE RESTART PARTITA MENTRE SI STA GIOCANDO
+//	FASE 1-2 GIORNO: UI CHE SPIEGA CHI PUOI VOTARE
 //=====================
 
-function restartGame() {
-    if (confirm("⚠️ Vuoi davvero riavviare la partita? Tutti i dati andranno persi!")) {
-        // 🔹 Ricarica la pagina, equivalente a chiudi/riapri
-        window.location.reload();
+function updateVoteInfo(){
+  if(phase === 'day_first'){
+    voteInfo.textContent = `PRIMO SONDAGGIO: NON PUOI VOTARE IL GUFATO (${gufato ? gufato : 'nessuno'})`;
+  } else if(phase === 'day_second'){
+    voteInfo.textContent = `BALLOTTAGGIO: CHI VUOI MANDARE AL ROGO (${ballotaggio.join(', ')})`;
+  } else {
+    voteInfo.textContent = '';
+  }
+}
+
+//=====================
+//	FASE 1-2 GIORNO: UI CHE GESTISCE CHI DEVE ANCORA VOTARE E CHI DEVE VOTARE
+//=====================
+
+function renderPlayerVoteButtons() {
+	playersDay.innerHTML = '';
+	voteArea.innerHTML = '';
+	dayState.textContent = DAY_TEXT.SELECT_PLAYER;
+	btnCalcolaVoti.style.display = 'none';
+
+	let voters;
+	if (!inSecondBallot) {
+		// PRIMO SONDAGGIO: solo giocatori vivi, escluse persone che hanno già votato e il gufato
+		voters = players.filter(p => p.alive && !(p.name in votiGiorno) && p.name !== gufato);
+	} else {
+		// SECONDO BALLOTTAGGIO: solo i candidati rimasti non votanti
+		voters = players.filter(p => p.alive && !ballotaggio.includes(p.name) && !(p.name in votiGiorno));
+	}
+
+	// Mostra pulsanti solo per i votanti corretti
+	if (voters.length === 0) {
+		if (Object.keys(votiGiorno).length > 0) {
+			btnCalcolaVoti.style.display = 'inline-block';
+		}
+		updateVoteInfo();
+		return;
+	}
+
+	voters.forEach(v => {
+		const b = document.createElement('button');
+		b.className = 'playerBtn';
+		b.textContent = v.name;
+		b.onclick = () => showVoteOptionsFor(v);
+		playersDay.appendChild(b);
+	});
+
+	updateVoteInfo();
+}
+
+//=====================
+//	FASE 1-2 GIORNO: UI CHE GESTISCE CHI DEVE ANCORA VOTARE E CHI DEVE VOTARE
+//=====================
+
+function showVoteOptionsFor(voter) {
+	playersDay.innerHTML = '';
+	voteArea.innerHTML = '';
+	btnCalcolaVoti.style.display = 'none';
+	dayState.textContent = DAY_TEXT.VOTO;
+	currentVoter = voter.name;
+
+	// determinare le opzioni votabili in base alla fase
+	let options = [];
+	if (!inSecondBallot) {
+		// primo sondaggio: tutti gli alive tranne sé stessi e il gufato
+		options = players
+			.filter(p => p.alive && p.name !== voter.name && p.name !== gufato)
+			.map(p => p.name);
+	} else {
+		// secondo ballot: possono votare solo i candidati (ballotaggio)
+		options = ballotaggio
+			.slice()
+			.filter(n => n !== voter.name);
+	}
+
+	options.forEach(opt => {
+		const btn = document.createElement('button');
+		btn.className = 'actionBtn';
+		btn.textContent = opt;
+		btn.onclick = () => {
+			votiGiorno[voter.name] = opt;
+			renderPlayerVoteButtons();
+		};
+		voteArea.appendChild(btn);
+	});
+}
+
+//=====================
+//	FASE 1-2 GIORNO: LOGICA SUL CALCOLO DI VOTO E CHI DEVE ANDARE AL ROGO
+//=====================
+
+btnCalcolaVoti.onclick = ()=> { computeVotes(); };
+
+function computeVotes() {
+    // Conta i voti
+    const tally = {};
+    players.filter(p => p.alive).forEach(p => tally[p.name] = 0);
+    Object.values(votiGiorno).forEach(v => {
+        if (tally[v] !== undefined) tally[v]++;
+    });
+
+    const anyVotes = Object.values(tally).some(c => c > 0);
+    if (!anyVotes) {
+        btnCalcolaVoti.style.display = 'none';
+        return;
+    }
+
+    // Trova il massimo dei voti e i candidati corrispondenti
+    const maxV = Math.max(...Object.values(tally));
+    let topCandidates = Object.keys(tally).filter(k => tally[k] === maxV);
+
+    // Primo turno (non ballot)
+    if (!inSecondBallot) {
+
+        // Se non c’è gufato → unica votazione
+        if (!gufato) {
+            if (topCandidates.length === 1) {
+                eliminatePlayer(topCandidates[0], 'rogo');
+            } else {
+                // pareggio → elimina uno casualmente
+                const randomIndex = Math.floor(Math.random() * topCandidates.length);
+                eliminatePlayer(topCandidates[randomIndex], 'rogo_pareggio');
+            }
+            return;
+        }
+
+        // C'è gufato → escludi gufato dai topCandidates
+        topCandidates = topCandidates.filter(n => n !== gufato);
+
+        // Controlla quanti candidati rimangono vivi
+        const aliveCandidates = topCandidates.filter(n => findPlayer(n)?.alive);
+
+        if (aliveCandidates.length === 1) {
+            // Solo un candidato vivo → secondo ballot con gufato
+            ballotaggio = [aliveCandidates[0], gufato].filter(n => findPlayer(n)?.alive);
+
+            // Se rimane solo un candidato → elimina direttamente
+            if (ballotaggio.length === 1) {
+                eliminatePlayer(ballotaggio[0], 'rogo_secondo_ballottaggio');
+                return;
+            } else if (ballotaggio.length === 0) {
+                showRecapRogoNoElimination([]);
+                return;
+            }
+
+            inSecondBallot = true;
+            votiGiorno = {};
+            phase = 'day_second';
+            updateVoteInfo();
+            renderPlayerVoteButtons();
+            return;
+
+        } else if (aliveCandidates.length > 1) {
+            // Pareggio tra più candidati → secondo ballot tra loro
+            ballotaggio = aliveCandidates.slice();
+            inSecondBallot = true;
+            votiGiorno = {};
+            phase = 'day_second';
+            updateVoteInfo();
+            renderPlayerVoteButtons();
+            return;
+        } else {
+            // Nessun candidato vivo → niente eliminazione
+            showRecapRogoNoElimination([]);
+            return;
+        }
+    }
+
+    // Secondo ballot
+    if (inSecondBallot) {
+        const aliveCandidates = ballotaggio.filter(n => findPlayer(n)?.alive);
+        if (aliveCandidates.length <= 1) {
+            // Solo uno rimasto → va al rogo
+            eliminatePlayer(aliveCandidates[0], 'rogo_secondo_ballottaggio');
+        } else {
+            // Due candidati → verifica pareggio
+            const votes1 = Object.values(votiGiorno).filter(v => v === aliveCandidates[0]).length;
+            const votes2 = Object.values(votiGiorno).filter(v => v === aliveCandidates[1]).length;
+
+            if (votes1 === votes2) {
+                // Pareggio → va al rogo il gufato
+                if (gufato && findPlayer(gufato)?.alive) {
+                    eliminatePlayer(gufato, 'rogo_pareggio_secondo_ballottaggio');
+                }
+            } else {
+                // Chi ha più voti va al rogo
+                const toEliminate = votes1 > votes2 ? aliveCandidates[0] : aliveCandidates[1];
+                eliminatePlayer(toEliminate, 'rogo_secondo_ballottaggio');
+            }
+        }
     }
 }
 
-// 🔹 COLLEGO IL TASTO QUICK RESTART
-const quickRestartBtn = document.getElementById("quickRestartBtn");
+//=====================
+//	RECAP NOTTE : MORTO E GUFATO + CONTROLLO VITTORIA
+//=====================
 
-quickRestartBtn.addEventListener("click", restartGame);
+function showNightRecap() {
+    // Nascondi notte e mostra recap
+    nightSection.style.display = 'none';
+    recapNightSection.style.display = 'block';
+    recapNightCard.innerHTML = '';
 
-// 🔹 TOUCH/LUNGO PRESSIONE SU MOBILE
-let holdTimer;
-quickRestartBtn.addEventListener("touchstart", () => {
-    holdTimer = setTimeout(restartGame, 1500);
-});
-quickRestartBtn.addEventListener("touchend", () => clearTimeout(holdTimer));
-quickRestartBtn.addEventListener("touchcancel", () => clearTimeout(holdTimer));
+    // 1️⃣ Mostra morti della notte
+    if (mortiFaseNotte.length) {
+        const d = document.createElement('div');
+        d.className = 'card';
+        d.innerHTML = `<strong>💀 MORTI DELLA NOTTE:</strong> ${mortiFaseNotte.join(', ')}`;
+        recapNightCard.appendChild(d);
+    } else {
+        const d = document.createElement('div');
+        d.className = 'card';
+        d.textContent = 'NESSUNA VITTIMA NELLA NOTTE.';
+        recapNightCard.appendChild(d);
+    }
+
+    // 2️⃣ Mostra gufate
+    const d = document.createElement('div');
+    d.className = 'card';
+
+    if (gufato) {
+        const t = findPlayer(gufato);
+        if (t && t.alive) {
+            d.innerHTML = `<strong>👁️ GUFO HA PUNTATO SU:</strong> ${t.name}`;
+        } else {
+            d.textContent = '👁️ NESSUN GUFATO.';
+        }
+    } else {
+        d.textContent = '👁️ NESSUN GUFATO.';
+    }
+
+    recapNightCard.appendChild(d);
+
+    // 3️⃣ Controllo vittoria subito dopo la notte
+    if (controllaFinePartita()) return;
+
+    // 4️⃣ Prepara azioni per il giorno: reset temporanei
+    azioni = {};
+    protezioni = {};
+    // mortiFaseNotte rimane per log e medium
+}
+
+//=====================
+//	RECAP ROGO + CONTROLLO VITTORIA + ELIMINAZIONE
+//=====================
+
+function eliminatePlayer(name, reason) {
+    const p = findPlayer(name);
+    if (!p) return;
+
+    // Segna il giocatore come morto
+    p.alive = false;
+    ultimoRogo = p.name;
+    log(`💀 ${p.name} è stato eliminato (${reason})`);
+
+    // Reset voti e ballottaggio
+    ballotaggio = [];
+    inSecondBallot = false;
+    votiGiorno = {};
+
+    // Controllo vittoria immediato
+    if (controllaFinePartita()) return;
+
+    // Mostra recap rogo
+    daySection.style.display = 'none';
+    recapRogoSection.style.display = 'block';
+    recapRogoCard.innerHTML = `<div class="card">💀 AL ROGO È MORTO: <strong>${name}</strong></div>`;
+}
+
+function showRecapRogoNoElimination(tiedList) {
+    daySection.style.display = 'none';
+    recapRogoSection.style.display = 'block';
+    recapRogoCard.innerHTML = `<div class="card">🔔 Pareggio nel secondo ballottaggio tra: ${tiedList.join(', ')}. <strong>Nessuna eliminazione</strong>.</div>`;
+
+    // Reset ballottaggio e voti
+    ballotaggio = [];
+    inSecondBallot = false;
+    votiGiorno = {};
+}
+
+//=====================
+//	TASTO "CONTINUA" DOPO IL GIORNO AGGIORNA ANCHE I NUMERI NOTTE E GIORNO
+//=====================
+
+continueToNightBtn.onclick = () => {
+    recapRogoSection.style.display = 'none';
+
+    // Incrementa la notte
+    nightNum++;
+    updateTitles();
+
+    // Reset stato notte
+    players.forEach(p => {
+        p.acted = false;
+        p.infoMsg = null; // ✅ RESET INFO QUI
+    });
+
+    azioni = {};
+    protezioni = {};
+    mortiFaseNotte = [];
+    gufato = null;
+
+    // 🔹 CONTROLLO LUPO ALFA
+    const lupoAlfa = players.find(p => p.role === "LUPO ALFA" && p.alive);
+    if (!lupoAlfa) {
+        // LUPO ALFA è morto → LUPO normale diventa un actionRole
+        if (!actionRoles.includes("LUPO")) actionRoles.push("LUPO");
+    }
+
+    // ✅ Pulisci snapshot della notte precedente
+    nightPlayersSnapshot = [];
+
+    nightSection.style.display = 'block';
+    renderNightFirst();
+};
+
+//=====================
+//	TASTO "CONTINUA" AL RECAP NOTTE PER FAR INIZIARE IL GIORNO
+//=====================
+
+continueToDayBtn.onclick = ()=>{
+  recapNightSection.style.display = 'none';
+  startDay();
+};
 
 //=====================
 //	CONTROLLO VINCITA
@@ -1410,7 +1476,6 @@ function controllaFinePartita() {
     let cattiviVivi = players.filter(p => p.alive && ruoloCattivi.includes(p.role));
     let LUPOVivo = players.find(p => (p.role === "LUPO" || p.role === "LUPO ALFA") && p.alive);
     let CRICETOVivo = players.find(p => p.role === "CRICETO" && p.alive);
-
     let vincita = null;
 
     // Cattivi vincono se il lupo è vivo e i cattivi > buoni
@@ -1446,9 +1511,6 @@ function controllaFinePartita() {
 //=====================
 
 function mostraVittoria(messaggio){
-    const endScreen = document.getElementById("endGameScreen");
-    const winnerBox = document.getElementById("winnerBox");
-    const finalLog = document.getElementById("finalLog");
 
     // testo vincitore
     winnerBox.textContent = messaggio;
@@ -1478,32 +1540,39 @@ function mostraVittoria(messaggio){
 
 function log(msg){
   const time = new Date().toLocaleTimeString();
-  const logContent = document.getElementById('logContent');
   const div = document.createElement('div');
   div.textContent = `[${time}] ${msg}`;
   logContent.appendChild(div);
   logContent.scrollTop = logContent.scrollHeight;
 }
+function logRoleDistribution() {                               //<---STAMPATA SUL LOG DEI RUOLI ASSOCIATI AL NOME
+    log('🎲 Distribuzione iniziale dei ruoli:');
+    players.forEach(p => log(`- ${p.name}: ${p.role}`));
+} 
+document.getElementById('logContainer').style.display = 'none';//<--- BLOCK PER FAR COMPARIRE IL LOG MENTRE SI GIOCA
+
+//=====================
+//	FINE
+//=====================
 
 function showEndGame(winner, logFinale) {
-    document.getElementById("gameUI").classList.add("hidden");
-    document.getElementById("endGameScreen").classList.remove("hidden");
+	document.getElementById("gameUI").classList.add("hidden");
+	document.getElementById("endGameScreen").classList.remove("hidden");
+	document.getElementById("winnerBox").textContent =
+		`VINCE LA SQUADRA ${winner}`;
 
-    document.getElementById("winnerBox").textContent =
-        `VINCE LA SQUADRA ${winner}`;
+	const logDiv = document.getElementById("finalLog");
+	logDiv.innerHTML = "";
 
-    const logDiv = document.getElementById("finalLog");
-    logDiv.innerHTML = "";
-
-    logFinale.forEach(riga => {
-        const p = document.createElement("div");
-        p.textContent = riga;
-        logDiv.appendChild(p);
-    });
+	logFinale.forEach(riga => {
+		const p = document.createElement("div");
+		p.textContent = riga;
+		logDiv.appendChild(p);
+	});
 }
 
 document.getElementById("restartBtn").onclick = () => {
-    location.reload();
+	location.reload();
 };
 
 </script>
